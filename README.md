@@ -37,7 +37,7 @@ To set up the bot, follow these steps:
 1. **Clone the repository**:
   ```bash
    git clone https://github.com/quirxkaan/dcjoinsounds.git
-   cd your-repo
+   cd dcjoinsounds
 ```
 2. **Create a virtual environment** *(optional but recommended)*:
   ```bash
