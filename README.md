@@ -48,7 +48,9 @@ source venv/bin/activate  # On Windows use: venv\Scripts\activate
   ```bash
 pip install -r requirements.txt
 ```
-4. **Run the bot**:
+4. **Paste your bot token to bot.py file**
+   Paste your bot token to field in the bot.py (YOUR_DISCORD_BOT_TOKEN)
+6. **Run the bot**:
 ```bash
 python bot.py
  ```
