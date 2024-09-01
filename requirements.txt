@@ -1,3 +1,5 @@
 discord.py
+discord
 yt-dlp
+yt_dlp
 asyncio
