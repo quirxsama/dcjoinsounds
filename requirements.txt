@@ -3,4 +3,3 @@ discord
 yt-dlp
 yt_dlp
 asyncio
-PyNaCl
