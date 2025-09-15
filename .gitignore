@@ -1,0 +1,9 @@
+# Ignore configuration files
+config.json
+
+# Ignore downloaded audio files
+downloads/
+
+# Ignore Python virtual environment
+venv/
+__pycache__/
