@@ -1,0 +1,39 @@
+[Unit]
+Description=SesAdam Discord Bot
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=discordbot
+Group=discordbot
+WorkingDirectory=/home/discordbot/soundman
+ExecStart=/usr/bin/python3 /home/discordbot/soundman/sesadam.py
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Environment
+Environment=PYTHONPATH=/home/discordbot/soundman
+Environment=DISCORD_BOT_TOKEN=your_bot_token_here
+
+# Restart ayarları
+Restart=always
+RestartSec=10
+
+# Resource limits
+MemoryLimit=512M
+CPUQuota=50%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sesadam-bot
+
+# Security
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/home/discordbot/soundman
+
+[Install]
+WantedBy=multi-user.target

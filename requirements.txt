@@ -1,5 +1,5 @@
-discord.py
-discord
-yt-dlp
-yt_dlp
+discord.py>=2.3.2
+yt-dlp>=2023.12.30
+aiohttp>=3.9.0
+python-dotenv>=1.0.0
 asyncio

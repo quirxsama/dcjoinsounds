@@ -1,2 +1,6 @@
 downloads/
 venv/
+.env
+bot.log
+__pycache__/
+*.pyc
