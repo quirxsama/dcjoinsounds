@@ -58,7 +58,7 @@ Bu Discord botu kullanıcıların ses dosyalarını yüklemesine ve YouTube link
    nano .env
 
    # Aşağıdaki satırı gerçek bot token'ınızla değiştirin
-   DISCORD_BOT_TOKEN=MTI0NzQzNzAyNDY2Nzg5Nzg1Nw.GeXMbZ.yYE7kDEds7wghMPgpvvcbwlhpvhPXp0sMD5rnw
+   DISCORD_BOT_TOKEN=your_actual_bot_token_here
    ```
 
    **.env dosya içeriği örneği:**
