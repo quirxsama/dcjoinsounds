@@ -1,6 +1,14 @@
-downloads/
-venv/
+# Ignore configuration files
+config.json
 .env
-bot.log
+
+# Ignore downloaded audio files
+downloads/
+
+# Ignore Python virtual environment
+venv/
 __pycache__/
 *.pyc
+
+# Ignore log files
+bot.log

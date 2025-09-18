@@ -215,4 +215,3 @@ sudo logrotate /etc/logrotate.d/sesadam
 **Ses Formatları:** MP3, WEBM, MP4, M4A, WAV, FLAC, OGG, AAC, WMA
 **Maksimum Dosya Boyutu:** 10MB
 **Maksimum Ses Süresi:** 15 saniye
-
