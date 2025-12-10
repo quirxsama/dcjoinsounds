@@ -13,3 +13,5 @@ __pycache__/
 # Ignore log files
 bot.log
 bot.pid
+firebase-debug.log
+/.marscode

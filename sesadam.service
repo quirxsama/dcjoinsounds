@@ -7,13 +7,13 @@ Wants=network.target
 Type=simple
 User=discordbot
 Group=discordbot
-WorkingDirectory=/home/discordbot/soundman
-ExecStart=/usr/bin/python3 /home/discordbot/soundman/sesadam.py
+WorkingDirectory=/home/quirxkaan/Belgeler/Projelerim/dcjoinsounds
+ExecStart=/usr/bin/python3 /home/quirxkaan/Belgeler/Projelerim/dcjoinsounds/bot.py
 ExecReload=/bin/kill -HUP $MAINPID
 
-# Environment
-Environment=PYTHONPATH=/home/discordbot/soundman
-Environment=DISCORD_BOT_TOKEN=your_bot_token_here
+# Environment - Token .env dosyasından okunur
+Environment=PYTHONPATH=/home/quirxkaan/Belgeler/Projelerim/dcjoinsounds
+EnvironmentFile=/home/quirxkaan/Belgeler/Projelerim/dcjoinsounds/.env
 
 # Restart ayarları
 Restart=always
@@ -33,7 +33,7 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=yes
-ReadWritePaths=/home/discordbot/soundman
+ReadWritePaths=/home/quirxkaan/Belgeler/Projelerim/dcjoinsounds
 
 [Install]
 WantedBy=multi-user.target

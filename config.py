@@ -1,33 +1,39 @@
 """
 Bot yapılandırma dosyası
-Production-ready ayarlar
+Production-ready ayarlar - Çoklu kanal desteği
 """
 
 import os
-from typing import Dict, Any
+import shutil
+from typing import Dict, Any, Optional
 
 # Bot yapılandırması
-BOT_CONFIG = {
+BOT_CONFIG: Dict[str, Any] = {
     'token_env_var': 'DISCORD_BOT_TOKEN',
     'command_prefix': '/',
     'max_file_size_mb': 10,
     'audio_trim_max_seconds': 15,
-    'voice_connection_timeout': 10.0,
-    'reconnection_max_retries': 3,
-    'reconnection_backoff_base': 2,
     'heartbeat_timeout': 60.0,
     'guild_ready_timeout': 5.0,
-    'log_level': 'INFO',
-    'log_file': 'bot.log'
+    'log_level': os.getenv('LOG_LEVEL', 'INFO'),
+    'log_file': os.getenv('LOG_FILE', 'bot.log'),
 }
 
-# Voice connection ayarları
-VOICE_CONFIG = {
+# Voice connection ayarları - Çoklu kanal desteği
+VOICE_CONFIG: Dict[str, Any] = {
+    # Çoklu bağlantı ayarları
+    'max_sessions_per_guild': 5,  # Sunucu başına maksimum eşzamanlı ses kanalı
+    'session_timeout': 60.0,       # Idle session timeout (saniye)
+    'connection_timeout': 15.0,    # Bağlantı timeout
+    'max_retries': 3,              # Bağlantı retry sayısı
+    
+    # Ses ayarları
     'ffmpeg_options': '-vn -b:a 96k',
     'audio_quality': '96k',
     'max_playback_time': 30,  # saniye
-    'connection_retry_delay': 1,  # saniye
-    'cleanup_interval': 300  # 5 dakika
+    
+    # Cleanup ayarları
+    'cleanup_interval': 30,  # saniye
 }
 
 # Dosya uzantıları
@@ -45,7 +51,8 @@ FFMPEG_PATHS = [
 ]
 
 # Downloads klasörü
-DOWNLOADS_DIR = 'downloads'
+DOWNLOADS_DIR = os.getenv('DOWNLOADS_DIR', 'downloads')
+
 
 def get_token() -> str:
     """Bot token'ını environment variable'dan al"""
@@ -54,25 +61,47 @@ def get_token() -> str:
         raise ValueError(f"Environment variable {BOT_CONFIG['token_env_var']} bulunamadı!")
     return token
 
+
 def ensure_directories():
     """Gerekli klasörlerin varlığını kontrol et"""
     os.makedirs(DOWNLOADS_DIR, exist_ok=True)
-
+    
     # Log klasörü
-    log_dir = os.path.dirname(BOT_CONFIG['log_file'])
+    log_file = BOT_CONFIG.get('log_file', 'bot.log')
+    log_dir = os.path.dirname(log_file)
     if log_dir:
         os.makedirs(log_dir, exist_ok=True)
 
+
 def get_ffmpeg_path() -> str:
     """FFmpeg yolunu bul"""
-    for path in FFMPEG_PATHS:
-        if os.path.isfile(path) and os.access(path, os.X_OK):
-            return path
-
-    # PATH'de ara
-    import shutil
+    # Önce PATH'de ara
     ffmpeg_path = shutil.which('ffmpeg')
     if ffmpeg_path:
         return ffmpeg_path
-
+    
+    # Yaygın konumlarda ara
+    for path in FFMPEG_PATHS:
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+    
     raise FileNotFoundError("FFmpeg bulunamadı. Lütfen FFmpeg'i yükleyin.")
+
+
+def get_config_summary() -> dict:
+    """Yapılandırma özetini al"""
+    return {
+        'bot': {
+            'prefix': BOT_CONFIG['command_prefix'],
+            'log_level': BOT_CONFIG['log_level'],
+        },
+        'voice': {
+            'max_sessions_per_guild': VOICE_CONFIG['max_sessions_per_guild'],
+            'session_timeout': VOICE_CONFIG['session_timeout'],
+        },
+        'audio': {
+            'max_duration': BOT_CONFIG['audio_trim_max_seconds'],
+            'max_file_size_mb': BOT_CONFIG['max_file_size_mb'],
+            'quality': VOICE_CONFIG['audio_quality'],
+        }
+    }

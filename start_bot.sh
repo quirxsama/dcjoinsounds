@@ -25,8 +25,8 @@ warning() {
 }
 
 # Çalışma dizini kontrolü
-if [[ ! -f "sesadam.py" ]]; then
-    error "sesadam.py dosyası bulunamadı. Doğru dizinde olduğunuzdan emin olun."
+if [[ ! -f "bot.py" ]]; then
+    error "bot.py dosyası bulunamadı. Doğru dizinde olduğunuzdan emin olun."
     exit 1
 fi
 
@@ -85,7 +85,7 @@ fi
 
 # Bot'u başlat
 log "SesAdam Discord Bot başlatılıyor..."
-python3 sesadam.py &
+python3 bot.py &
 BOT_PID=$!
 
 # PID'yi kaydet
