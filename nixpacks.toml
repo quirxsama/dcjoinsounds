@@ -1,8 +1,11 @@
 # Railway Nixpacks Configuration
-# FFmpeg ve Opus kurulumu için gerekli
+# FFmpeg, Opus ve Python kurulumu için gerekli
 
 [phases.setup]
-nixPkgs = ["ffmpeg", "libopus"]
+nixPkgs = ["python311", "python311Packages.pip", "ffmpeg", "libopus"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
 
 [start]
 cmd = "python bot.py"
