@@ -13,13 +13,13 @@ from discord.ext import commands
 import yt_dlp as youtube_dl
 
 from logger_setup import get_logger
+from config import DOWNLOADS_DIR, BOT_CONFIG
 
 log = get_logger('bot.command.audio')
 
 # Sabitler
-DOWNLOADS_DIR = 'downloads'
-MAX_AUDIO_DURATION = 15  # saniye
-MAX_FILE_SIZE_MB = 10
+MAX_AUDIO_DURATION = BOT_CONFIG.get('audio_trim_max_seconds', 15)  # saniye
+MAX_FILE_SIZE_MB = BOT_CONFIG.get('max_file_size_mb', 10)
 SUPPORTED_FORMATS = ['.mp3', '.webm', '.mp4', '.m4a', '.wav', '.flac', '.ogg', '.aac', '.wma']
 
 
