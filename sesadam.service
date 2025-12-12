@@ -5,35 +5,28 @@ Wants=network.target
 
 [Service]
 Type=simple
-User=discordbot
-Group=discordbot
+User=quirxkaan
+Group=quirxkaan
 WorkingDirectory=/home/quirxkaan/Belgeler/Projelerim/dcjoinsounds
 ExecStart=/usr/bin/python3 /home/quirxkaan/Belgeler/Projelerim/dcjoinsounds/bot.py
 ExecReload=/bin/kill -HUP $MAINPID
 
 # Environment - Token .env dosyasından okunur
 Environment=PYTHONPATH=/home/quirxkaan/Belgeler/Projelerim/dcjoinsounds
-EnvironmentFile=/home/quirxkaan/Belgeler/Projelerim/dcjoinsounds/.env
+EnvironmentFile=-/home/quirxkaan/Belgeler/Projelerim/dcjoinsounds/.env
 
 # Restart ayarları
 Restart=always
 RestartSec=10
 
 # Resource limits
-MemoryLimit=512M
+MemoryMax=512M
 CPUQuota=50%
 
 # Logging
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=sesadam-bot
-
-# Security
-NoNewPrivileges=yes
-PrivateTmp=yes
-ProtectSystem=strict
-ProtectHome=yes
-ReadWritePaths=/home/quirxkaan/Belgeler/Projelerim/dcjoinsounds
 
 [Install]
 WantedBy=multi-user.target

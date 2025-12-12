@@ -106,6 +106,32 @@ sudo systemctl status sesadam
 sudo journalctl -u sesadam -f
 ```
 
+## 🚂 Railway Deploy
+
+### 1. Railway'e Bağlan
+
+1. [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub**
+2. Repository'yi seç: `quirxsama/soundman`
+
+### 2. Volume Oluştur (Kalıcı Veri için)
+
+1. Proje dashboard'unda **+ New** → **Volume**
+2. Mount path: `/data`
+3. Volume'u service'e bağla
+
+### 3. Environment Variables
+
+Railway dashboard'da **Variables** sekmesine git:
+
+```env
+DISCORD_BOT_TOKEN=your_token_here
+RAILWAY_VOLUME_MOUNT_PATH=/data
+```
+
+### 4. Deploy
+
+Otomatik deploy başlayacak. Logları **Deployments** sekmesinden takip edin.
+
 ## Proje Yapısı
 
 ```
