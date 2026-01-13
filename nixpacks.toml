@@ -1,4 +1,4 @@
-# Railway Nixpacks Configuration
+# Nixpacks Configuration
 # FFmpeg, Opus ve Python kurulumu için gerekli
 
 [phases.setup]

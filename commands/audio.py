@@ -13,7 +13,7 @@ from discord.ext import commands
 import yt_dlp as youtube_dl
 
 from logger_setup import get_logger
-from config import DOWNLOADS_DIR, BOT_CONFIG
+from config import DOWNLOADS_DIR, BOT_CONFIG, get_ffmpeg_path
 
 log = get_logger('bot.command.audio')
 
@@ -23,32 +23,10 @@ MAX_FILE_SIZE_MB = BOT_CONFIG.get('max_file_size_mb', 10)
 SUPPORTED_FORMATS = ['.mp3', '.webm', '.mp4', '.m4a', '.wav', '.flac', '.ogg', '.aac', '.wma']
 
 
-def get_ffmpeg_path() -> Optional[str]:
-    """FFmpeg yolunu bul"""
-    ffmpeg_path = shutil.which('ffmpeg')
-    if ffmpeg_path:
-        return ffmpeg_path
-    
-    common_paths = [
-        '/usr/bin/ffmpeg',
-        '/usr/local/bin/ffmpeg',
-        '/opt/ffmpeg/bin/ffmpeg'
-    ]
-    
-    for path in common_paths:
-        if os.path.isfile(path):
-            return path
-    
-    return None
-
-
 def trim_audio(input_path: str, output_path: str, start_time: float = 0, end_time: float = 15):
     """Ses dosyasını kırp ve webm formatına dönüştür"""
     duration = min(end_time - start_time, MAX_AUDIO_DURATION)
     ffmpeg_path = get_ffmpeg_path()
-    
-    if not ffmpeg_path:
-        raise FileNotFoundError("FFmpeg bulunamadı. Lütfen FFmpeg'i yükleyin.")
     
     result = subprocess.run([
         ffmpeg_path, '-y', '-i', input_path,
@@ -317,6 +295,13 @@ class AudioCommands(commands.Cog):
         if os.path.exists(DOWNLOADS_DIR):
             audio_count = len([f for f in os.listdir(DOWNLOADS_DIR) if f.endswith('.webm')])
         
+        # FFmpeg durumu
+        try:
+            get_ffmpeg_path()
+            ffmpeg_status = "✅ Yüklü"
+        except FileNotFoundError:
+            ffmpeg_status = "❌ Bulunamadı"
+
         embed = discord.Embed(
             title="🤖 Bot Durumu",
             color=discord.Color.green()
@@ -327,6 +312,7 @@ class AudioCommands(commands.Cog):
         embed.add_field(name="🔊 Aktif Bağlantı", value=str(total_sessions), inline=True)
         embed.add_field(name="▶️ Çalan Ses", value=str(total_playing), inline=True)
         embed.add_field(name="🏓 Gecikme", value=f"{round(self.bot.latency * 1000)}ms", inline=True)
+        embed.add_field(name="📼 FFmpeg", value=ffmpeg_status, inline=True)
         
         await interaction.followup.send(embed=embed)
 

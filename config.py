@@ -50,9 +50,9 @@ FFMPEG_PATHS = [
     'ffmpeg'  # PATH'den ara
 ]
 
-# Downloads klasörü - Railway volume desteği
-# Railway'de volume mount path: /data
-_volume_path = os.getenv('RAILWAY_VOLUME_MOUNT_PATH', '')
+# Downloads klasörü - Volume desteği (Persistent Storage)
+# Volume mount path env variable
+_volume_path = os.getenv('VOLUME_PATH', '')
 if _volume_path:
     DOWNLOADS_DIR = os.path.join(_volume_path, 'downloads')
 else:

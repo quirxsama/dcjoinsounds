@@ -106,31 +106,30 @@ sudo systemctl status sesadam
 sudo journalctl -u sesadam -f
 ```
 
-## 🚂 Railway Deploy
+## 🚀 Northflank Deploy
 
-### 1. Railway'e Bağlan
+### 1. Projeyi İçe Aktar
 
-1. [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub**
-2. Repository'yi seç: `quirxsama/soundman`
+1. Northflank Dashboard -> **New Service** -> **Combined Service**
+2. Repository seçin
 
-### 2. Volume Oluştur (Kalıcı Veri için)
+### 2. Build Konfigürasyonu
 
-1. Proje dashboard'unda **+ New** → **Volume**
-2. Mount path: `/data`
-3. Volume'u service'e bağla
+1. **Build Type**: `Dockerfile` seçin (ÖNEMLİ: Buildpack seçmeyin)
+2. **Context**: `/`
+3. **Docker file**: `/Dockerfile`
 
 ### 3. Environment Variables
 
-Railway dashboard'da **Variables** sekmesine git:
+**Variable** sekmesinden ekleyin:
 
 ```env
 DISCORD_BOT_TOKEN=your_token_here
-RAILWAY_VOLUME_MOUNT_PATH=/data
 ```
 
 ### 4. Deploy
 
-Otomatik deploy başlayacak. Logları **Deployments** sekmesinden takip edin.
+Otomatik olarak build ve deploy başlayacaktır. Logs sekmesinden durumu takip edebilirsiniz.
 
 ## Proje Yapısı
 
