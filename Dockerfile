@@ -14,11 +14,19 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Northflank kalıcı depolama klasörü
+RUN mkdir -p /app/data
+RUN mkdir -p /app/downloads
+
+# Disk izinleri (Northflank için)
+RUN chmod 777 /app/data
+RUN chmod 777 /app/downloads
+
 # Uygulama kodlarını kopyala
 COPY . .
 
-# İndirme klasörünü oluştur
-RUN mkdir -p downloads
+# Kalıcı depolama volume tanımı
+VOLUME /app/data
 
 # Botu başlat
 CMD ["python", "bot.py"]
