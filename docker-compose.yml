@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  dcjoinsounds:
+    build: .
+    restart: always
+    volumes:
+      # Kalıcı depolama
+      - app_data:/app/data
+      # İndirme klasörü (geçici veya kalıcı)
+      - app_downloads:/app/downloads
+    env_file:
+      - .env
+    # Gerekli olmadıkça port yönlendirmesi yok
+    network_mode: host
+
+volumes:
+  app_data:
+  app_downloads:
