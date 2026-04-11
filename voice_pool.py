@@ -341,9 +341,9 @@ class VoicePool:
             
             while True:
                 try:
-                    # Kuyruktan isteğı al (5sn boş kalırsa çık)
+                    # Kuyruktan isteğı al (1sn timeout - eleman yoksa disconnect)
                     request: PlaybackRequest = await asyncio.wait_for(
-                        queue.get(), timeout=5.0
+                        queue.get(), timeout=1.0
                     )
                 except asyncio.TimeoutError:
                     # Kuyruk boş, disconnect

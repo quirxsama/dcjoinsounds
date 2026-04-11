@@ -3,11 +3,8 @@ version: '3.8'
 services:
   dcjoinsounds:
     build: .
-    restart: always
     volumes:
-      # Kalıcı depolama
-      - app_data:/app/data
-      # İndirme klasörü (geçici veya kalıcı)
+      # Ses dosyaları için kalıcı depolama
       - app_downloads:/app/downloads
     env_file:
       - .env

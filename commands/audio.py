@@ -107,6 +107,7 @@ class AudioCommands(commands.Cog):
                 'max_filesize': MAX_FILE_SIZE_MB * 1024 * 1024,
                 'no_warnings': True,
                 'quiet': True,
+                'cookiefile': 'cookies.txt',
             }
             
             await interaction.followup.send("⏳ İndiriliyor...")

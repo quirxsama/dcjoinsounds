@@ -9,8 +9,7 @@ import os
 import sys
 import signal
 import asyncio
-import time
-from typing import Optional, Dict
+from typing import Optional
 
 import discord
 from discord.ext import commands
@@ -56,9 +55,8 @@ class SesAdamBot(commands.Bot):
         # Voice Pool - çoklu kanal yönetimi
         self.voice_pool: Optional[VoicePool] = None
         
-        # Kullanıcı bazlı cooldown (user_id -> son tetikleme zamanı)
-        self._user_cooldowns: Dict[int, float] = {}
-        self._cooldown_seconds: float = 30.0
+        # on_ready tekrar çalışmasını önle
+        self._ready = False
         
         # Graceful shutdown flag
         self._shutdown_event = asyncio.Event()
@@ -97,6 +95,11 @@ class SesAdamBot(commands.Bot):
     
     async def on_ready(self):
         """Bot Discord'a bağlandığında çalışır"""
+        if self._ready:
+            log.info("Bot yeniden bağlandı (reconnect)")
+            return
+        self._ready = True
+        
         if self.user:
             log.info(f"Bot olarak giriş yapıldı: {self.user} (ID: {self.user.id})")
         
@@ -189,14 +192,6 @@ class SesAdamBot(commands.Bot):
         if not os.path.isfile(audio_file):
             log.debug(f"Ses dosyası bulunamadı: user={user_id}")
             return
-        
-        # Cooldown kontrolü
-        now = time.monotonic()
-        last_played = self._user_cooldowns.get(user_id, 0)
-        if now - last_played < self._cooldown_seconds:
-            log.debug(f"Cooldown aktif: user={user_id}, kalan={self._cooldown_seconds - (now - last_played):.1f}s")
-            return
-        self._user_cooldowns[user_id] = now
         
         log.info(
             f"Kullanıcı ses kanalına katıldı, ses kuyruğa ekleniyor",
