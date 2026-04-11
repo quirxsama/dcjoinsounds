@@ -3,8 +3,7 @@ Audio Commands - Ses yükleme ve yönetim komutları
 """
 
 import os
-import subprocess
-import shutil
+import asyncio
 from typing import Optional
 
 import discord
@@ -23,21 +22,24 @@ MAX_FILE_SIZE_MB = BOT_CONFIG.get('max_file_size_mb', 10)
 SUPPORTED_FORMATS = ['.mp3', '.webm', '.mp4', '.m4a', '.wav', '.flac', '.ogg', '.aac', '.wma']
 
 
-def trim_audio(input_path: str, output_path: str, start_time: float = 0, end_time: float = 15):
-    """Ses dosyasını kırp ve webm formatına dönüştür"""
+async def trim_audio(input_path: str, output_path: str, start_time: float = 0, end_time: float = 15):
+    """Ses dosyasını kırp ve webm formatına dönüştür (async)"""
     duration = min(end_time - start_time, MAX_AUDIO_DURATION)
     ffmpeg_path = get_ffmpeg_path()
     
-    result = subprocess.run([
+    process = await asyncio.create_subprocess_exec(
         ffmpeg_path, '-y', '-i', input_path,
         '-ss', str(start_time),
         '-t', str(duration),
         '-c:a', 'libopus', '-b:a', '96k', '-vbr', 'on',
-        output_path
-    ], capture_output=True, text=True)
+        output_path,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await process.communicate()
     
-    if result.returncode != 0:
-        raise RuntimeError(f"FFmpeg hatası: {result.stderr}")
+    if process.returncode != 0:
+        raise RuntimeError(f"FFmpeg hatası: {stderr.decode()}")
 
 
 def is_supported_format(filename: str) -> bool:
@@ -109,11 +111,14 @@ class AudioCommands(commands.Cog):
             
             await interaction.followup.send("⏳ İndiriliyor...")
             
-            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-                ydl.extract_info(url, download=True)
+            def _download():
+                with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                    ydl.extract_info(url, download=True)
+            
+            await asyncio.to_thread(_download)
             
             # Sesi kırp
-            trim_audio(temp_output, final_output, start_time=start, end_time=end)
+            await trim_audio(temp_output, final_output, start_time=start, end_time=end)
             
             # Geçici dosyayı sil
             if os.path.exists(temp_output):
@@ -182,7 +187,7 @@ class AudioCommands(commands.Cog):
             await attachment.save(temp_input)
             
             # Sesi kırp ve dönüştür
-            trim_audio(temp_input, final_output, start_time=start, end_time=end)
+            await trim_audio(temp_input, final_output, start_time=start, end_time=end)
             
             # Geçici dosyayı sil
             if os.path.exists(temp_input):
@@ -245,16 +250,32 @@ class AudioCommands(commands.Cog):
             await interaction.followup.send("📭 Henüz hiç ses dosyası yüklenmemiş.")
             return
         
-        # Kullanıcı bilgilerini al
-        user_files = []
+        # Kullanıcı bilgilerini al (cache-first, sonra toplu fetch)
+        user_ids = []
         for filename in webm_files:
             user_id_str = filename.replace('.webm', '')
             try:
-                user_id = int(user_id_str)
-                user = await self.bot.fetch_user(user_id)
-                username = user.display_name
-            except:
-                username = f"Bilinmeyen ({user_id_str})"
+                user_ids.append(int(user_id_str))
+            except ValueError:
+                user_ids.append(None)
+        
+        # Cache'den çözümlenemeyenleri toplu fetch et
+        async def resolve_user(uid):
+            if uid is None:
+                return None
+            user = self.bot.get_user(uid)
+            if user:
+                return user
+            try:
+                return await self.bot.fetch_user(uid)
+            except Exception:
+                return None
+        
+        users = await asyncio.gather(*(resolve_user(uid) for uid in user_ids))
+        
+        user_files = []
+        for filename, uid, user in zip(webm_files, user_ids, users):
+            username = user.display_name if user else f"Bilinmeyen ({uid})"
             
             file_path = os.path.join(DOWNLOADS_DIR, filename)
             file_size = os.path.getsize(file_path)

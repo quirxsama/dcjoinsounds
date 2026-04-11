@@ -5,6 +5,7 @@ Production-ready ayarlar - Çoklu kanal desteği
 
 import os
 import shutil
+import functools
 from typing import Dict, Any, Optional
 
 # Bot yapılandırması
@@ -78,8 +79,9 @@ def ensure_directories():
         os.makedirs(log_dir, exist_ok=True)
 
 
+@functools.lru_cache(maxsize=1)
 def get_ffmpeg_path() -> str:
-    """FFmpeg yolunu bul"""
+    """FFmpeg yolunu bul (cache'li)"""
     # Önce PATH'de ara
     ffmpeg_path = shutil.which('ffmpeg')
     if ffmpeg_path:

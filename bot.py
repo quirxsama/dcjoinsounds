@@ -9,14 +9,15 @@ import os
 import sys
 import signal
 import asyncio
-from typing import Optional
+import time
+from typing import Optional, Dict
 
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
 from logger_setup import setup_logging, get_logger
-from voice_pool import VoicePool
+from voice_pool import VoicePool, PlaybackRequest
 from config import BOT_CONFIG, VOICE_CONFIG, DOWNLOADS_DIR, get_ffmpeg_path
 
 # Environment variables yükle
@@ -54,6 +55,10 @@ class SesAdamBot(commands.Bot):
         
         # Voice Pool - çoklu kanal yönetimi
         self.voice_pool: Optional[VoicePool] = None
+        
+        # Kullanıcı bazlı cooldown (user_id -> son tetikleme zamanı)
+        self._user_cooldowns: Dict[int, float] = {}
+        self._cooldown_seconds: float = 30.0
         
         # Graceful shutdown flag
         self._shutdown_event = asyncio.Event()
@@ -95,12 +100,15 @@ class SesAdamBot(commands.Bot):
         if self.user:
             log.info(f"Bot olarak giriş yapıldı: {self.user} (ID: {self.user.id})")
         
-        # Slash komutlarını senkronize et
-        try:
-            synced = await self.tree.sync()
-            log.info(f"{len(synced)} slash komutu senkronize edildi")
-        except Exception as e:
-            log.error(f"Komut senkronizasyonu başarısız: {e}")
+        # Slash komutlarını senkronize et (sadece istendiğinde)
+        if os.getenv('SYNC_COMMANDS', '').lower() in ('1', 'true', 'yes'):
+            try:
+                synced = await self.tree.sync()
+                log.info(f"{len(synced)} slash komutu senkronize edildi")
+            except Exception as e:
+                log.error(f"Komut senkronizasyonu başarısız: {e}")
+        else:
+            log.info("Komut senkronizasyonu atlandı (SYNC_COMMANDS=1 ile etkinleştirin)")
         
         # İstatistikler
         log.info(f"Toplam sunucu sayısı: {len(self.guilds)}")
@@ -172,9 +180,7 @@ class SesAdamBot(commands.Bot):
             await self._handle_user_join(member, after.channel)
     
     async def _handle_user_join(self, member: discord.Member, channel: discord.VoiceChannel):
-        """Kullanıcı ses kanalına katıldığında sesi çal"""
-        guild_id = member.guild.id
-        channel_id = channel.id
+        """Kullanıcı ses kanalına katıldığında sesi kuyruğa ekle"""
         user_id = member.id
         
         # Kullanıcının ses dosyası var mı kontrol et
@@ -184,58 +190,41 @@ class SesAdamBot(commands.Bot):
             log.debug(f"Ses dosyası bulunamadı: user={user_id}")
             return
         
+        # Cooldown kontrolü
+        now = time.monotonic()
+        last_played = self._user_cooldowns.get(user_id, 0)
+        if now - last_played < self._cooldown_seconds:
+            log.debug(f"Cooldown aktif: user={user_id}, kalan={self._cooldown_seconds - (now - last_played):.1f}s")
+            return
+        self._user_cooldowns[user_id] = now
+        
         log.info(
-            f"Kullanıcı ses kanalına katıldı, ses çalınacak",
+            f"Kullanıcı ses kanalına katıldı, ses kuyruğa ekleniyor",
             extra={
                 'user_id': user_id,
-                'guild_id': guild_id,
-                'channel_id': channel_id,
+                'guild_id': member.guild.id,
+                'channel_id': channel.id,
                 'user_name': member.display_name,
                 'channel_name': channel.name
             }
         )
         
         try:
-            # FFmpeg kontrolü
             ffmpeg_path = get_ffmpeg_path()
             
-            # Voice kanalına bağlan
-            session = await self.voice_pool.connect(channel, user_id)
-            
-            if not session:
-                log.error(f"Ses kanalına bağlanılamadı: {channel.name}")
-                return
-            
-            # Ses kaynağı oluştur
-            audio_source = discord.FFmpegOpusAudio(
-                audio_file,
-                executable=ffmpeg_path,
-                options=VOICE_CONFIG.get('ffmpeg_options', '-vn -b:a 96k')
+            request = PlaybackRequest(
+                audio_file=audio_file,
+                user_id=user_id,
+                ffmpeg_path=ffmpeg_path,
+                ffmpeg_options=VOICE_CONFIG.get('ffmpeg_options', '-vn -b:a 96k'),
             )
             
-            # Ses çal
-            success = await self.voice_pool.play_audio(
-                guild_id=guild_id,
-                channel_id=channel_id,
-                audio_source=audio_source,
-                wait_for_completion=True
-            )
-            
-            if success:
-                log.info(f"Ses başarıyla çalındı: user={member.display_name}")
-            else:
-                log.warning(f"Ses çalınamadı: user={member.display_name}")
-            
-            # Ses çaldıktan sonra bağlantıyı kes
-            await self.voice_pool.disconnect(guild_id, channel_id)
+            await self.voice_pool.enqueue_playback(channel, request)
             
         except FileNotFoundError as e:
             log.error(f"FFmpeg hatası: {e}")
         except Exception as e:
-            log.error(f"Ses çalma hatası: {e}", exc_info=True)
-            # Hata durumunda bağlantıyı temizle
-            if self.voice_pool:
-                await self.voice_pool.disconnect(guild_id, channel_id)
+            log.error(f"Ses kuyruğa ekleme hatası: {e}", exc_info=True)
     
     async def on_error(self, event: str, *args, **kwargs):
         """Genel hata yakalama"""

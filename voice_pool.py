@@ -10,7 +10,6 @@ from typing import Dict, Optional, Tuple, Set
 from collections import defaultdict
 
 import discord
-from discord.ext import tasks
 
 from logger_setup import get_logger
 
@@ -38,6 +37,15 @@ class VoiceSession:
         return (datetime.now() - self.started_at).total_seconds()
 
 
+@dataclass
+class PlaybackRequest:
+    """Kuyrukta bekleyen bir ses çalma isteği"""
+    audio_file: str
+    user_id: int
+    ffmpeg_path: str
+    ffmpeg_options: str = '-vn -b:a 96k'
+
+
 class VoicePool:
     """
     Çoklu ses kanalı yönetimi.
@@ -61,14 +69,15 @@ class VoicePool:
         # Aktif sessionlar: (guild_id, channel_id) -> VoiceSession
         self._sessions: Dict[Tuple[int, int], VoiceSession] = {}
         
-        # Guild başına lock - paralel bağlantı denemelerini önlemek için
-        self._guild_locks: Dict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
-        
         # Channel bazlı lock - aynı kanala paralel bağlantı önleme
         self._channel_locks: Dict[Tuple[int, int], asyncio.Lock] = defaultdict(asyncio.Lock)
         
         # Aktif playback takibi - (guild_id, channel_id) -> playing
         self._active_playbacks: Set[Tuple[int, int]] = set()
+        
+        # Kanal bazlı playback kuyruğu ve worker task'ları
+        self._playback_queues: Dict[Tuple[int, int], asyncio.Queue] = {}
+        self._queue_workers: Dict[Tuple[int, int], asyncio.Task] = {}
         
         # Cleanup task
         self._cleanup_task: Optional[asyncio.Task] = None
@@ -288,6 +297,84 @@ class VoicePool:
             self._active_playbacks.discard(key)
             session.is_playing = False
     
+    async def enqueue_playback(
+        self,
+        channel: discord.VoiceChannel,
+        request: PlaybackRequest,
+    ) -> None:
+        """
+        Kanal bazlı kuyruğa ses isteği ekle.
+        Worker yoksa otomatik başlatır. Aynı kanala gelen istekler sırayla çalınır.
+        """
+        key = (channel.guild.id, channel.id)
+        
+        # Kuyruk yoksa oluştur
+        if key not in self._playback_queues:
+            self._playback_queues[key] = asyncio.Queue()
+        
+        self._playback_queues[key].put_nowait(request)
+        
+        # Worker yoksa veya bitti ise başlat
+        worker = self._queue_workers.get(key)
+        if worker is None or worker.done():
+            self._queue_workers[key] = asyncio.create_task(
+                self._queue_worker(channel, key)
+            )
+    
+    async def _queue_worker(
+        self,
+        channel: discord.VoiceChannel,
+        key: Tuple[int, int],
+    ) -> None:
+        """Kanal için kuyruk worker'i: bağlan → sırayla çal → boşsa disconnect"""
+        guild_id, channel_id = key
+        queue = self._playback_queues.get(key)
+        if not queue:
+            return
+        
+        try:
+            # Kanala bağlan
+            session = await self.connect(channel, 0)
+            if not session:
+                log.error(f"Queue worker: kanala bağlanılamadı: {channel.name}")
+                return
+            
+            while True:
+                try:
+                    # Kuyruktan isteğı al (5sn boş kalırsa çık)
+                    request: PlaybackRequest = await asyncio.wait_for(
+                        queue.get(), timeout=5.0
+                    )
+                except asyncio.TimeoutError:
+                    # Kuyruk boş, disconnect
+                    break
+                
+                # Ses kaynağı oluştur ve çal
+                try:
+                    audio_source = discord.FFmpegOpusAudio(
+                        request.audio_file,
+                        executable=request.ffmpeg_path,
+                        options=request.ffmpeg_options,
+                    )
+                    await self.play_audio(
+                        guild_id=guild_id,
+                        channel_id=channel_id,
+                        audio_source=audio_source,
+                        wait_for_completion=True,
+                    )
+                except Exception as e:
+                    log.error(f"Queue worker playback hatası: {e}", exc_info=True)
+        
+        except asyncio.CancelledError:
+            log.debug(f"Queue worker iptal edildi: channel={channel_id}")
+        except Exception as e:
+            log.error(f"Queue worker hatası: {e}", exc_info=True)
+        finally:
+            # Disconnect ve temizlik
+            await self.disconnect(guild_id, channel_id)
+            self._playback_queues.pop(key, None)
+            self._queue_workers.pop(key, None)
+    
     async def disconnect(self, guild_id: int, channel_id: int, force: bool = True):
         """Belirtilen kanaldan bağlantıyı kes"""
         key = (guild_id, channel_id)
@@ -302,6 +389,7 @@ class VoicePool:
                 log.error(f"Disconnect hatası: {e}")
         
         self._active_playbacks.discard(key)
+        self._channel_locks.pop(key, None)
     
     async def disconnect_guild(self, guild_id: int):
         """Bir sunucudaki tüm bağlantıları kes"""
@@ -322,6 +410,18 @@ class VoicePool:
             except asyncio.CancelledError:
                 pass
         
+        # Queue worker'ları durdur
+        for task in self._queue_workers.values():
+            if not task.done():
+                task.cancel()
+        for task in list(self._queue_workers.values()):
+            try:
+                await task
+            except (asyncio.CancelledError, Exception):
+                pass
+        self._queue_workers.clear()
+        self._playback_queues.clear()
+        
         # Tüm sessionları kapat
         keys = list(self._sessions.keys())
         for key in keys:
@@ -332,6 +432,7 @@ class VoicePool:
         
         self._sessions.clear()
         self._active_playbacks.clear()
+        self._channel_locks.clear()
         log.info("Voice cleanup tamamlandı")
     
     @property
